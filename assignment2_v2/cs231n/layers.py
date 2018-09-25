@@ -211,6 +211,25 @@ def batchnorm_forward(x, gamma, beta, bn_param):
         # Referencing the original paper (https://arxiv.org/abs/1502.03167)   #
         # might prove to be helpful.                                          #
         #######################################################################
+
+        mu = np.mean(x, axis=0)
+
+        print(mu.shape)
+
+        xmu = x - mu
+        ssq = np.mean(np.square(xmu), axis=0)
+        ssqv = np.var(x, axis=0)
+        sqrtvar = np.sqrt(ssqv + eps)
+        invvar = 1./ np.sqrt(ssqv)
+        xhat = xmu * invvar
+
+        out = gamma * xhat + beta
+
+        running_mean = momentum * running_mean + (1 - momentum) * mu
+        running_var = momentum * running_var + (1 - momentum) * ssqv
+
+        cache = (xhat, gamma, xmu, invvar, sqrtvar, ssqv, eps)
+
         pass
         #######################################################################
         #                           END OF YOUR CODE                          #
@@ -222,6 +241,8 @@ def batchnorm_forward(x, gamma, beta, bn_param):
         # then scale and shift the normalized data using gamma and beta.      #
         # Store the result in the out variable.                               #
         #######################################################################
+        x_normalize = (x - running_mean) / np.sqrt(running_var + eps)
+        out = gamma * x_normalize + beta
         pass
         #######################################################################
         #                          END OF YOUR CODE                           #
@@ -260,6 +281,11 @@ def batchnorm_backward(dout, cache):
     # Referencing the original paper (https://arxiv.org/abs/1502.03167)       #
     # might prove to be helpful.                                              #
     ###########################################################################
+    
+    xhat, gamma, xmu, invvar, sqrtvar, ssqv, eps = cache
+    dbeta = np.sum(dout, axis=0)
+    dgamma = np.sum(dout * xhat, axis=0)
+
     pass
     ###########################################################################
     #                             END OF YOUR CODE                            #
