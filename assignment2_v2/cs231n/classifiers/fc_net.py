@@ -207,8 +207,10 @@ class FullyConnectedNet(object):
             self.params['W' + str(li+1)] = weight_scale * np.random.randn(dims[li], dims[li+1])
             self.params['b' + str(li+1)] = np.zeros(dims[li+1])
             if self.normalization in ['batchnorm', 'layernorm']:
-                self.params['gamma'+str(li+1)] = np.ones(dims[li+1])
-                self.params['beta'+str(li+1)] = np.zeros(dims[li+1])
+                if li+1 < self.num_layers:
+                    self.params['gamma'+str(li+1)] = np.ones(dims[li+1])
+                    print('gamma'+str(li+1))
+                    self.params['beta'+str(li+1)] = np.zeros(dims[li+1])
 
         pass
         ############################################################################
@@ -278,7 +280,13 @@ class FullyConnectedNet(object):
             Xin = outs[li]
             W = self.params['W' + str(li+1)]
             b = self.params['b' + str(li+1)]
-            outs[li+1], caches[li+1] = affine_relu_forward(Xin, W, b)
+            if self.normalization == 'batchnorm':
+                fcout, fccache = affine_forward(Xin, W, b)
+                bnout, bncache = batchnorm_forward(fcout, self.params['gamma'+str(li+1)], self.params['beta'+str(li+1)], self.bn_params[li]) 
+                outs[li+1], rucache = relu_forward(bnout)
+                caches[li+1] = (fccache, bncache, rucache)
+            else:
+                outs[li+1], caches[li+1] = affine_relu_forward(Xin, W, b)
 
         scores, caches[self.num_layers] = affine_forward(outs[self.num_layers-1], self.params['W' + str(self.num_layers)], self.params['b' + str(self.num_layers)])
 
@@ -315,7 +323,15 @@ class FullyConnectedNet(object):
         for li in range(self.num_layers - 1):
             li_r = self.num_layers - 1 - li
             #print(li_r)
-            ins[li_r], grads['W' + str(li_r)], grads['b' + str(li_r)] = affine_relu_backward(ins[li_r+1], caches[li_r])
+            if self.normalization == 'batchnorm':
+                fccache, bncache, rucache = caches[li_r]
+
+                ru_in = relu_backward(ins[li_r+1], rucache)
+                bn_in, grads['gamma' + str(li_r)], grads['beta' + str(li_r)] = batchnorm_backward(ru_in, bncache)
+                ins[li_r], grads['W' + str(li_r)], grads['b' + str(li_r)] = affine_backward(bn_in, fccache)
+            else:
+                ins[li_r], grads['W' + str(li_r)], grads['b' + str(li_r)] = affine_relu_backward(ins[li_r+1], caches[li_r])
+                
             grads['W' + str(li_r)] += self.reg * self.params['W' + str(li_r)]
             loss += .5 * self.reg * np.sum(np.square(self.params['W' + str(li_r)]))
 
