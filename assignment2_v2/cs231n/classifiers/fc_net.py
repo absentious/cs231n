@@ -212,6 +212,8 @@ class FullyConnectedNet(object):
                     print('gamma'+str(li+1))
                     self.params['beta'+str(li+1)] = np.zeros(dims[li+1])
 
+
+
         pass
         ############################################################################
         #                             END OF YOUR CODE                             #
@@ -287,6 +289,8 @@ class FullyConnectedNet(object):
                 caches[li+1] = (fccache, bncache, rucache)
             else:
                 outs[li+1], caches[li+1] = affine_relu_forward(Xin, W, b)
+            if self.use_dropout:
+                outs[li+1], caches['drop'+str(li+1)] = dropout_forward(outs[li+1], self.dropout_param)
 
         scores, caches[self.num_layers] = affine_forward(outs[self.num_layers-1], self.params['W' + str(self.num_layers)], self.params['b' + str(self.num_layers)])
 
@@ -323,6 +327,8 @@ class FullyConnectedNet(object):
         for li in range(self.num_layers - 1):
             li_r = self.num_layers - 1 - li
             #print(li_r)
+            if self.use_dropout:
+                ins[li_r+1] = dropout_backward(ins[li_r+1], caches['drop'+str(li_r)])
             if self.normalization == 'batchnorm':
                 fccache, bncache, rucache = caches[li_r]
 
